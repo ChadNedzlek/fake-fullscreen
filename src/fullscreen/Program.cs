@@ -58,23 +58,56 @@ namespace Vaettir.Personal.Utility.Launcher
                 }
             }
 
+            Process parentProcess = null;
+            var existing = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(path));
+
+            if (existing.Length > 0)
+            {
+                var choice = MessageBox.Show("Found process running, use existing process?", "Use existing?",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+                if (choice == DialogResult.Yes)
+                {
+                    parentProcess = existing[0];
+                }
+            }
+
             using (TaskBarControl.SetTemporaryState(TaskBarControl.AppBarStates.AutoHide))
             {
                 TaskCompletionSource<int> exiting = new TaskCompletionSource<int>();
 
-                var parentProcess = new Process
+                bool shouldStart = false;
+                if (parentProcess == null)
                 {
-                    EnableRaisingEvents = true,
-                    StartInfo =
+                    shouldStart = true;
+                    parentProcess = new Process
                     {
-                        FileName = path,
-                        CreateNoWindow = true,
-                        WindowStyle = ProcessWindowStyle.Minimized,
-                        UseShellExecute = false,
-                    },
+                        EnableRaisingEvents = true,
+                        StartInfo =
+                        {
+                            FileName = path,
+                            CreateNoWindow = true,
+                            WindowStyle = ProcessWindowStyle.Minimized,
+                            UseShellExecute = false,
+                        },
+                    };
+                }
+
+                parentProcess.Exited += (p, __) =>
+                {
+                    try
+                    {
+                        exiting.SetResult(((Process) p).ExitCode);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        exiting.SetResult(0);
+                    }
                 };
-                parentProcess.Exited += (p, __) => exiting.SetResult(((Process) p).ExitCode);
-                parentProcess.Start();
+                if (shouldStart)
+                {
+                    parentProcess.Start();
+                }
 
                 bool anyProcessRunning;
                 do
@@ -103,6 +136,7 @@ namespace Vaettir.Personal.Utility.Launcher
 
                             if (ptr != IntPtr.Zero)
                             {
+                                WindowHelpers.RestoreWindow(ptr);
                                 WindowHelpers.MakeExternalWindowBorderless(ptr);
                                 SafeNativeMethods.MoveWindow(ptr, rect.X, rect.Y, rect.Width, rect.Height, true);
                             }

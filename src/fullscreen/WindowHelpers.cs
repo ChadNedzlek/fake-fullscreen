@@ -59,5 +59,14 @@ namespace Vaettir.Personal.Utility.Launcher
             long style = (long) GetWindowLongPtr(hwnd, GWL_STYLE);
             SetWindowLongPtr(hwnd, GWL_STYLE, new IntPtr(style & ~WS_CAPTION));
         }
+
+        private const uint SW_RESTORE = 9;
+        [DllImport("user32.dll", EntryPoint = "ShowWindow", PreserveSig = false)]
+        private static extern void ShowWindow(IntPtr hWnd, uint nCmdShow);
+
+        public static void RestoreWindow(IntPtr hWnd)
+        {
+            ShowWindow(hWnd, SW_RESTORE);
+        }
     }
 }
